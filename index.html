@@ -296,7 +296,7 @@ form.addEventListener('submit', async e => {
 
   // Store normalized offsets separately for x (by width) and y (by height)
   // so the network scales to fill the screen in both axes on resize.
-  const REF_W = 1920, REF_H = 1080;
+  const REF_W = 900, REF_H = 520;
   for (let i = 1; i < nodes.length; i++) {
     const nd = nodes[i];
     const r  = 28 + Math.pow(nd.depth, 1.25) * 68 + rand(68);
