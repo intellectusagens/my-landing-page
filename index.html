@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Subscribe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: #05070c;
+      overflow: hidden;
+      font-family: 'Syne', sans-serif;
+    }
+
+    canvas#tree {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+
+    /* ── Card ── */
+    .card {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      width: 360px;
+      padding: 32px 28px 28px;
+      border-radius: 18px;
+      background: #141414;
+      border: 1px solid #1E3A5F;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+      animation: fadeUp 0.9s cubic-bezier(.16,1,.3,1) both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translate(-50%, calc(-50% + 20px)); }
+      to   { opacity: 1; transform: translate(-50%, -50%); }
+    }
+
+    /* ── Logo ── */
+    .logo-zone {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    .logo-zone img {
+      height: 80px;
+      width: auto;
+      object-fit: contain;
+      opacity: 0.95;
+      background: #141414;
+      border-radius: 12px;
+      padding: 10px 16px;
+    }
+
+    /* ── Title ── */
+    .title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(180, 210, 240, 0.65);
+      text-align: center;
+      margin-bottom: 18px;
+    }
+
+    /* ── Fields ── */
+    .field {
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    .field input[type="email"],
+    .field input[type="text"] {
+      width: 100%;
+      height: 44px;
+      padding: 0 14px;
+      border-radius: 11px;
+      border: 1px solid #1E3A5F;
+      background: #0e1a27;
+      color: rgba(210, 235, 255, 0.95);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .field input:focus {
+      border-color: #2d5a8e;
+      box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.5);
+    }
+
+    .field input::placeholder {
+      color: rgba(120, 165, 210, 0.35);
+    }
+
+    /* ── Button ── */
+    button.submit {
+      width: 100%;
+      height: 44px;
+      margin-top: 4px;
+      border-radius: 11px;
+      border: 1px solid #1E3A5F;
+      background: #1E3A5F;
+      color: rgba(210, 235, 255, 0.95);
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    button.submit::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(180, 220, 255, 0.08), transparent);
+      transform: translateX(-100%);
+      transition: transform 0.5s;
+    }
+
+    button.submit:hover {
+      background: #264a78;
+      border-color: #2d5a8e;
+    }
+
+    button.submit:hover::before {
+      transform: translateX(100%);
+    }
+
+    button.submit:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    /* ── Status ── */
+    .status {
+      margin-top: 14px;
+      min-height: 20px;
+      text-align: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 11.5px;
+      letter-spacing: 0.03em;
+      color: rgba(150, 195, 235, 0.6);
+      transition: opacity 0.3s;
+    }
+
+    .status.success { color: rgba(100, 210, 160, 0.9); }
+    .status.error   { color: rgba(255, 120, 120, 0.9); }
+  </style>
+</head>
+<body>
+
+<canvas id="tree"></canvas>
+
+<div class="card">
+  <!-- Logo hosted in repo — rename your file to logo.png (or change the src below) -->
+  <div class="logo-zone">
+    <img src="logo.png" alt="Logo" />
+  </div>
+
+  <div class="title">Stay in the loop</div>
+
+  <!--
+    FORMSPREE: replace YOUR_FORM_ID with the ID from formspree.io
+    Sign up free → New Form → copy the endpoint.
+    Alternatively swap this for any backend endpoint.
+  -->
+  <form id="subForm" action="https://formspree.io/f/mzdkozzw" method="POST" enctype="multipart/form-data">
+    <div class="field">
+      <input type="email" name="email" id="emailInput" placeholder="your@email.com" required />
+    </div>
+
+    <button class="submit" type="submit" id="submitBtn">Subscribe →</button>
+  </form>
+
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+// ── Form submission
+const form      = document.getElementById('subForm');
+const submitBtn = document.getElementById('submitBtn');
+const status    = document.getElementById('status');
+
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  submitBtn.disabled = true;
+  status.className = 'status';
+  status.textContent = 'Sending…';
+
+  try {
+    const data = new FormData(form);
+    const res  = await fetch(form.action, {
+      method: 'POST',
+      body: data,
+      headers: { Accept: 'application/json' }
+    });
+
+    if (res.ok) {
+      status.className = 'status success';
+      status.textContent = '✓ You\'re on the list!';
+      form.reset();
+    } else {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(json.error || 'Submission failed');
+    }
+  } catch (err) {
+    status.className = 'status error';
+    status.textContent = '✗ ' + err.message;
+    submitBtn.disabled = false;
+  }
+});
+
+// ── Animated tree background ─────────────────────────────────────────────────
+(() => {
+  const canvas = document.getElementById("tree");
+  const ctx = canvas.getContext("2d");
+
+  let w, h, dpr;
+  function resize() {
+    dpr = Math.max(1, window.devicePixelRatio || 1);
+    w = window.innerWidth;
+    h = window.innerHeight;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener("resize", () => location.reload());
+  resize();
+
+  const ROOT_POS = { x: 0.88, y: 0.32 };
+  const LEVELS = 9;
+  const ROOT_CHILDREN = 50;
+  const ROOT_WEDGES = [
+    { center: Math.PI * 2.00, spread: Math.PI * 0.42, count: 5 },
+    { center: Math.PI * 1.50, spread: Math.PI * 0.42, count: 5 },
+    { center: Math.PI * 1.00, spread: Math.PI * 0.42, count: 4 },
+    { center: Math.PI * 0.90, spread: Math.PI * 0.60, count: 5 },
+    { center: Math.PI * 0.50, spread: Math.PI * 0.42, count: 4 },
+    { center: Math.PI * 0.15, spread: Math.PI * 0.40, count: 5 },
+  ];
+
+  const BRANCH_MIN = 0, BRANCH_MAX = 3;
+  const R_BASE = 28, R_STEP = 68, R_JITTER = 68;
+  const ANGLE_JITTER = 0.24, SUBTREE_SWAY = 0.28, XY_JITTER = 12;
+  const NODE_SIZE_ROOT = 1.2, NODE_SIZE = 1.2;
+  const EDGE_WIDTH_NEAR_ROOT = 0.7, EDGE_WIDTH_FAR = 0.7;
+  const PACKETS = 28, PACKET_SPEED = 0.75, PULSE_WIDTH = 2.01;
+  const PULSE_INTENSITY = 0.4, PULSE_DOT_SIZE = 1.2, MARGIN = 10;
+
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const rand  = n => (Math.random() - 0.5) * 2 * n;
+
+  const nodes = [], edges = [];
+
+  function addNode(parent, depth) {
+    const idx = nodes.length;
+    nodes.push({ parent, children: [], depth, angle: 0, x: 0, y: 0 });
+    if (parent !== -1) nodes[parent].children.push(idx);
+    return idx;
+  }
+
+  const root = addNode(-1, 0);
+  const rootKids = [];
+  for (const wedge of ROOT_WEDGES) {
+    for (let i = 0; i < wedge.count; i++) {
+      const c = addNode(root, 1);
+      const u = wedge.count <= 1 ? 0.5 : i / (wedge.count - 1);
+      const a0 = wedge.center - wedge.spread / 2;
+      const a1 = wedge.center + wedge.spread / 2;
+      nodes[c].angle = a0 + u * (a1 - a0) + rand(ANGLE_JITTER * 0.6);
+      edges.push({ a: root, b: c });
+      rootKids.push(c);
+    }
+  }
+  while (rootKids.length < ROOT_CHILDREN) {
+    const c = addNode(root, 1);
+    nodes[c].angle = Math.PI * 0.90 + rand(0.45);
+    edges.push({ a: root, b: c });
+    rootKids.push(c);
+  }
+
+  let frontier = [...rootKids];
+  for (let d = 2; d <= LEVELS; d++) {
+    const next = [];
+    for (const p of frontier) {
+      const k = Math.floor(BRANCH_MIN + Math.random() * (BRANCH_MAX - BRANCH_MIN + 1));
+      for (let i = 0; i < k; i++) {
+        const c = addNode(p, d);
+        edges.push({ a: p, b: c });
+        next.push(c);
+      }
+    }
+    frontier = next;
+  }
+
+  const stack = [root];
+  while (stack.length) {
+    const u = stack.pop();
+    for (const c of nodes[u].children) {
+      if (u !== root) nodes[c].angle = nodes[u].angle + rand(SUBTREE_SWAY) + rand(ANGLE_JITTER);
+      stack.push(c);
+    }
+  }
+
+  const rootX = w * ROOT_POS.x, rootY = h * ROOT_POS.y;
+  nodes[root].x = clamp(rootX, MARGIN, w - MARGIN);
+  nodes[root].y = clamp(rootY, MARGIN, h - MARGIN);
+
+  function placeNode(i) {
+    const nd = nodes[i];
+    if (i === root) return;
+    let r = R_BASE + Math.pow(nd.depth, 1.25) * R_STEP + rand(R_JITTER);
+    let best = null;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const x = nodes[root].x + Math.cos(nd.angle) * r + rand(XY_JITTER);
+      const y = nodes[root].y + Math.sin(nd.angle) * r + rand(XY_JITTER);
+      const score =
+        Math.max(0, MARGIN - x) + Math.max(0, x - (w - MARGIN)) +
+        Math.max(0, MARGIN - y) + Math.max(0, y - (h - MARGIN));
+      if (!best || score < best.score) best = { x, y, score };
+      if (score === 0) break;
+    }
+    nd.x = clamp(best.x, MARGIN, w - MARGIN);
+    nd.y = clamp(best.y, MARGIN, h - MARGIN);
+  }
+  for (let i = 0; i < nodes.length; i++) placeNode(i);
+
+  const keep = new Array(nodes.length).fill(true);
+  for (let i = 0; i < nodes.length; i++) {
+    if (i === root) continue;
+    const nd = nodes[i];
+    if (nd.x <= MARGIN+1 || nd.x >= w-(MARGIN+1) || nd.y <= MARGIN+1 || nd.y >= h-(MARGIN+1))
+      keep[i] = false;
+  }
+  for (let i = 0; i < nodes.length; i++) {
+    if (!keep[i]) {
+      const st2 = [...nodes[i].children];
+      while (st2.length) { const c = st2.pop(); keep[c] = false; st2.push(...nodes[c].children); }
+    }
+  }
+
+  const keptEdges = edges.filter(e => keep[e.a] && keep[e.b]);
+  const childrenKept = new Map();
+  for (let i = 0; i < nodes.length; i++) {
+    if (!keep[i]) continue;
+    childrenKept.set(i, nodes[i].children.filter(c => keep[c]));
+  }
+
+  function edgeIndex(a, b) {
+    for (let i = 0; i < keptEdges.length; i++)
+      if (keptEdges[i].a === a && keptEdges[i].b === b) return i;
+    return -1;
+  }
+
+  function randomKeptChild(p) {
+    const kids = childrenKept.get(p) || [];
+    return kids.length ? kids[Math.floor(Math.random() * kids.length)] : -1;
+  }
+
+  function newPacket() {
+    const c = randomKeptChild(root);
+    const idx = c === -1 ? -1 : edgeIndex(root, c);
+    return { e: idx < 0 ? 0 : idx, t: 0, dir: 1,
+      speed: PACKET_SPEED * (0.75 + Math.random() * 0.9),
+      path: idx < 0 ? [] : [idx] };
+  }
+
+  const packets = Array.from({ length: PACKETS }, newPacket);
+
+  function stepPacket(p) {
+    const e = keptEdges[p.e];
+    if (!e) { Object.assign(p, newPacket()); return; }
+    const child = e.b;
+    if (p.dir === 1) {
+      const kids = childrenKept.get(child) || [];
+      if (kids.length) {
+        const nc = kids[Math.floor(Math.random() * kids.length)];
+        const idx = edgeIndex(child, nc);
+        if (idx !== -1) { p.e = idx; p.path.push(idx); p.t = 0; p.dir = 1; return; }
+      }
+      p.dir = -1; p.t = 1; return;
+    }
+    if (p.path.length > 0) p.path.pop();
+    if (p.path.length === 0) { Object.assign(p, newPacket()); return; }
+    p.e = p.path[p.path.length - 1]; p.dir = -1; p.t = 1;
+  }
+
+  function edgeLW(depth) {
+    const t = depth / (LEVELS + 1);
+    return EDGE_WIDTH_NEAR_ROOT * (1 - t) + EDGE_WIDTH_FAR * t;
+  }
+
+  function drawEdge(a, b, alpha, depth) {
+    ctx.strokeStyle = `rgba(120,180,255,${alpha})`;
+    ctx.lineWidth = edgeLW(depth);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+
+  function drawPulse(a, b, t, intensity, depth) {
+    t = Math.max(0, Math.min(1, t));
+    const t0 = Math.max(0, t - PULSE_WIDTH), t1 = Math.min(1, t + PULSE_WIDTH);
+    const x0 = a.x+(b.x-a.x)*t0, y0 = a.y+(b.y-a.y)*t0;
+    const x1 = a.x+(b.x-a.x)*t1, y1 = a.y+(b.y-a.y)*t1;
+    const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+    grad.addColorStop(0,   `rgba(200,240,255,0)`);
+    grad.addColorStop(0.5, `rgba(200,240,255,${0.9*intensity})`);
+    grad.addColorStop(1,   `rgba(200,240,255,0)`);
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = Math.max(1.4, edgeLW(depth) + 0.8);
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  }
+
+  function drawNode(p, isRoot) {
+    ctx.fillStyle = isRoot ? "rgba(230,255,255,0.95)" : "rgba(180,220,255,0.9)";
+    const r = isRoot ? NODE_SIZE_ROOT : NODE_SIZE;
+    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI*2); ctx.fill();
+  }
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    ctx.clearRect(0, 0, w, h);
+
+    for (const e of keptEdges) {
+      const a = nodes[e.a], b = nodes[e.b];
+      const depth = nodes[e.b].depth;
+      drawEdge(a, b, 0.26 - (depth/(LEVELS+1))*0.14, depth);
+    }
+
+    for (const p of packets) {
+      p.t += p.dir * p.speed * dt;
+      if (p.dir === 1 && p.t >= 1) { p.t = 1; stepPacket(p); }
+      if (p.dir === -1 && p.t <= 0) { p.t = 0; stepPacket(p); }
+      const e = keptEdges[p.e];
+      if (!e) continue;
+      const a = nodes[e.a], b = nodes[e.b];
+      drawPulse(a, b, p.t, PULSE_INTENSITY, nodes[e.b].depth);
+      const x = a.x+(b.x-a.x)*p.t, y = a.y+(b.y-a.y)*p.t;
+      ctx.fillStyle = "rgba(220,250,255,0.95)";
+      ctx.beginPath(); ctx.arc(x, y, PULSE_DOT_SIZE, 0, Math.PI*2); ctx.fill();
+    }
+
+    for (let i = 0; i < nodes.length; i++) {
+      if (i !== root && !keep[i]) continue;
+      drawNode(nodes[i], i === root);
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
